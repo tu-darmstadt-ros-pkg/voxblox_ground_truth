@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.1)
 project(voxblox_ground_truth)
 
-add_definitions(-std=c++11)
+set(CMAKE_CXX_STANDARD 14)
 
 
 find_package(catkin_simple REQUIRED)
@@ -39,6 +39,7 @@ if (BUILD_GAZEBO_PLUGINS)
       src/sdf_creator.cpp
       src/sdf_visualizer.cpp
       src/triangle_geometer.cpp)
+  target_link_libraries(voxblox_ground_truth_plugin ${GAZEBO_LIBRARIES})
 endif ()
 
 ##########
