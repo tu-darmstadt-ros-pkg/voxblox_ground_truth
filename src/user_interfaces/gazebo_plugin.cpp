@@ -1,6 +1,7 @@
 #include "voxblox_ground_truth/user_interfaces/gazebo_plugin.h"
 
 #include <string>
+#include <curl/curl.h>
 
 #include "voxblox_ground_truth/sdf_creator.h"
 
@@ -200,6 +201,25 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
 
   return true;
 }
+bool VoxbloxGroundTruthPlugin::downloadFile(const std::string& uri, const std::string& file_path) const {
+  CURL *curl;
+  FILE *fp;
+  CURLcode res;
+  curl = curl_easy_init();
+  if (curl) {
+    fp = fopen(file_path.c_str(),"wb");
+    curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    res = curl_easy_perform(curl);
+    /* always cleanup */
+    curl_easy_cleanup(curl);
+    fclose(fp);
+    return true;
+  } else {
+    return false;
+  }
+}
 
 const common::Mesh* VoxbloxGroundTruthPlugin::loadMesh(const msgs::Geometry& geometry_msg) const {
   // Instantiate a Gazebo mesh manager
@@ -217,18 +237,34 @@ const common::Mesh* VoxbloxGroundTruthPlugin::loadMesh(const msgs::Geometry& geo
   if (geometry_type_str == "mesh") {
     // find base name of mesh object
     std::string mesh_base_name = geometry_msg.mesh().filename();
-    LOG(INFO) << "Attempting to load mesh " << mesh_base_name;
-    // extracting file name
+
+    // decide of local or remote file
+    const std::string http_prefix = "http";
+    const std::string file_prefix = "file://";
+
+    if (mesh_base_name.rfind(file_prefix, 0) == 0) {
+      // local file
+      // erase prefix
+      mesh_base_name.erase(mesh_base_name.begin(),
+                           mesh_base_name.begin() + file_prefix.size());
+
+    } else if (mesh_base_name.rfind(http_prefix, 0) == 0) {
+      // remote file
+      // download the file to a tmp file
+      const std::string tmp_file_name = "/tmp/mesh_temp.dae";
+      if (!downloadFile(mesh_base_name, tmp_file_name)) {
+        LOG(ERROR) << "Download failed of " << mesh_base_name;
+        return nullptr;
+      }
+      mesh_base_name = tmp_file_name;
+    }
+
+    // erase file type
     size_t idx = mesh_base_name.find('.');
     mesh_base_name.erase(mesh_base_name.begin() + idx,
                          mesh_base_name.end());
-    const std::string prefix = "file://";
-    size_t idx_prefix = mesh_base_name.find(prefix);
-    if (idx_prefix < mesh_base_name.size() &&
-        mesh_base_name.size() > prefix.size()) {
-      mesh_base_name.erase(mesh_base_name.begin(),
-                           mesh_base_name.begin() + prefix.size());
-    }
+    LOG(INFO) << "Attempting to load mesh " << mesh_base_name;
+
     // try loading different mesh objects
     for (const std::string& object_type : mesh_file_extensions_) {
       mesh_name = mesh_base_name + object_type;

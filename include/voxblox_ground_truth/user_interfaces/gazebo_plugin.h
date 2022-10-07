@@ -25,6 +25,8 @@ class VoxbloxGroundTruthPlugin : public WorldPlugin {
 
  private:
   const common::Mesh* loadMesh(const msgs::Geometry& geometry_msg) const;
+  bool downloadFile(const std::string& uri, const std::string& file_path) const;
+
   physics::WorldPtr world_;
   ros::NodeHandle nh_private_;
   voxblox::FloatingPoint voxel_size_;
