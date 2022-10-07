@@ -28,13 +28,7 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
   CHECK(nh_private_.getParam("/voxblox_ground_truth/voxel_size", voxel_size_))
       << "ROS param /voxblox_ground_truth/voxel_size must be set.";
 
-  // Instantiate a Gazebo mesh manager
-  common::MeshManager* mesh_manager = common::MeshManager::Instance();
-  CHECK_NOTNULL(mesh_manager);
-  if (!mesh_manager) {
-    LOG(WARNING) << "Could not get pointer to MeshManager";
-    return false;
-  }
+
 
   // Instantiate the ground truth SDF creator
   voxblox::TsdfMap::Config map_config;
@@ -67,62 +61,8 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
         }
 
         // Load the mesh
-        std::string geometry_type_str = msgs::ConvertGeometryType(geometry_msg.type());
-        const common::Mesh* mesh_ptr;
-        std::string mesh_name;
-
-        if (geometry_type_str == "mesh") {
-          // find base name of mesh object
-          std::string mesh_base_name = geometry_msg.mesh().filename();
-          LOG(INFO) << "Attempting to load mesh " << mesh_base_name;
-          // extracting file name
-          size_t idx = mesh_base_name.find('.');
-          mesh_base_name.erase(mesh_base_name.begin() + idx,
-                               mesh_base_name.end());
-          const std::string prefix = "file://";
-          size_t idx_prefix = mesh_base_name.find(prefix);
-          if (idx_prefix < mesh_base_name.size() &&
-              mesh_base_name.size() > prefix.size()) {
-            mesh_base_name.erase(mesh_base_name.begin(),
-                                 mesh_base_name.begin() + prefix.size());
-          }
-          // try loading different mesh objects
-          for (const std::string& object_type : mesh_file_extensions_) {
-            mesh_name = mesh_base_name + object_type;
-            mesh_ptr = mesh_manager->Load(mesh_name);
-            if (mesh_ptr) {
-              LOG(INFO)
-                  << "- Loading file \"" << mesh_name << "\" successful.";
-              break;
-            } else {
-              LOG(INFO)
-                  << "- Loading mesh \"" << mesh_name << "\" failed.";
-            }
-          }
-          if (!mesh_ptr) {
-            mesh_name = geometry_msg.mesh().filename();
-            LOG(WARNING) << "All attempts to load mesh " << mesh_name
-                         << " failed.";
-          }
-        } else if (geometry_type_str == "box" || geometry_type_str == "cylinder" ||
-                   geometry_type_str == "sphere" || geometry_type_str == "plane") {
-          mesh_name = "unit_" + geometry_type_str;
-          mesh_ptr = mesh_manager->GetMesh(mesh_name);
-        } else {
-          // TODO(victorr): Add support for remaining Mesh shapes, namely
-          //                - physics::Base::POLYLINE_SHAPE
-          //                - physics::Base::HEIGHTMAP_SHAPE
-          //                - physics::Base::MAP_SHAPE
-          //                - physics::Base::MULTIRAY_SHAPE
-          //                - physics::Base::RAY_SHAPE
-          LOG(WARNING) << "Not yet able to process shapes of type: "
-                       << geometry_type_str;
-          return false;
-        }
-
+        const common::Mesh* mesh_ptr = loadMesh(geometry_msg);
         if (!mesh_ptr) {
-          LOG(WARNING)
-              << "Could not get pointer to mesh '" << mesh_name << "'";
           return false;
         }
 
@@ -148,6 +88,7 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
           // NOTE: There is no need to scale the geometry, since
           //       Gazebo already returns it at the appropriate scale
           ignition::math::Vector3d geometry_size;
+          std::string geometry_type_str = msgs::ConvertGeometryType(geometry_msg.type());
           if (geometry_type_str == "box") {
             geometry_size = msgs::ConvertIgn(geometry_msg.box().size());
           } else if (geometry_type_str == "sphere") {
@@ -259,7 +200,71 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
 
   return true;
 }
-std::string VoxbloxGroundTruthPlugin::downloadFile(const std::string& uri) const {
-  return std::string();
+
+const common::Mesh* VoxbloxGroundTruthPlugin::loadMesh(const msgs::Geometry& geometry_msg) const {
+  // Instantiate a Gazebo mesh manager
+  common::MeshManager* mesh_manager = common::MeshManager::Instance();
+  CHECK_NOTNULL(mesh_manager);
+  if (!mesh_manager) {
+    LOG(WARNING) << "Could not get pointer to MeshManager";
+    return nullptr;
+  }
+
+  std::string geometry_type_str = msgs::ConvertGeometryType(geometry_msg.type());
+  const common::Mesh* mesh_ptr;
+  std::string mesh_name;
+
+  if (geometry_type_str == "mesh") {
+    // find base name of mesh object
+    std::string mesh_base_name = geometry_msg.mesh().filename();
+    LOG(INFO) << "Attempting to load mesh " << mesh_base_name;
+    // extracting file name
+    size_t idx = mesh_base_name.find('.');
+    mesh_base_name.erase(mesh_base_name.begin() + idx,
+                         mesh_base_name.end());
+    const std::string prefix = "file://";
+    size_t idx_prefix = mesh_base_name.find(prefix);
+    if (idx_prefix < mesh_base_name.size() &&
+        mesh_base_name.size() > prefix.size()) {
+      mesh_base_name.erase(mesh_base_name.begin(),
+                           mesh_base_name.begin() + prefix.size());
+    }
+    // try loading different mesh objects
+    for (const std::string& object_type : mesh_file_extensions_) {
+      mesh_name = mesh_base_name + object_type;
+      mesh_ptr = mesh_manager->Load(mesh_name);
+      if (mesh_ptr) {
+        LOG(INFO)
+            << "- Loading file \"" << mesh_name << "\" successful.";
+        break;
+      } else {
+        LOG(INFO)
+            << "- Loading mesh \"" << mesh_name << "\" failed.";
+      }
+    }
+    if (!mesh_ptr) {
+      mesh_name = geometry_msg.mesh().filename();
+      LOG(WARNING) << "All attempts to load mesh " << mesh_name
+                   << " failed.";
+    }
+  } else if (geometry_type_str == "box" || geometry_type_str == "cylinder" ||
+             geometry_type_str == "sphere" || geometry_type_str == "plane") {
+    mesh_name = "unit_" + geometry_type_str;
+    mesh_ptr = mesh_manager->GetMesh(mesh_name);
+  } else {
+    // TODO(victorr): Add support for remaining Mesh shapes, namely
+    //                - physics::Base::POLYLINE_SHAPE
+    //                - physics::Base::HEIGHTMAP_SHAPE
+    //                - physics::Base::MAP_SHAPE
+    //                - physics::Base::MULTIRAY_SHAPE
+    //                - physics::Base::RAY_SHAPE
+    LOG(WARNING) << "Not yet able to process shapes of type: " << geometry_type_str;
+    return nullptr;
+  }
+
+  if (!mesh_ptr) {
+    LOG(WARNING) << "Could not get pointer to mesh '" << mesh_name << "'";
+  }
+  return mesh_ptr;
 }
 }  // namespace gazebo

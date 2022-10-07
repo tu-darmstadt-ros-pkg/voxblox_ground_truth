@@ -24,6 +24,7 @@ class VoxbloxGroundTruthPlugin : public WorldPlugin {
                        voxblox_msgs::FilePath::Response& response);  // NOLINT
 
  private:
+  const common::Mesh* loadMesh(const msgs::Geometry& geometry_msg) const;
   physics::WorldPtr world_;
   ros::NodeHandle nh_private_;
   voxblox::FloatingPoint voxel_size_;
