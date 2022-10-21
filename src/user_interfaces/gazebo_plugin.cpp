@@ -209,12 +209,21 @@ bool VoxbloxGroundTruthPlugin::downloadFile(const std::string& url, const std::s
   curl = curl_easy_init();
   if (curl) {
     fp = fopen(file_path.c_str(),"wb");
-    curl_easy_setopt(curl, CURLOPT_URL, uri.c_str());
+
+    // Escape url path
+    CURLU *h = curl_url();
+    curl_url_set(h, CURLUPART_URL,url.c_str(), CURLU_URLENCODE);
+    char* escaped_url;
+    curl_url_get(h, CURLUPART_URL, &escaped_url, CURLU_URLENCODE);
+
+    LOG(INFO) << "Downloading file '" << std::string(escaped_url) << "'.";
+    curl_easy_setopt(curl, CURLOPT_URL, escaped_url);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, NULL);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
     res = curl_easy_perform(curl);
     /* always cleanup */
     curl_easy_cleanup(curl);
+    curl_free(escaped_url);
     fclose(fp);
     if (res != CURLcode::CURLE_OK) {
       LOG(ERROR) << "Failed to download the file. Error: " << std::string(curl_easy_strerror(res));
