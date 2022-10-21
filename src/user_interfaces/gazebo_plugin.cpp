@@ -201,7 +201,8 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
 
   return true;
 }
-bool VoxbloxGroundTruthPlugin::downloadFile(const std::string& uri, const std::string& file_path) const {
+
+bool VoxbloxGroundTruthPlugin::downloadFile(const std::string& url, const std::string& file_path) const {
   CURL *curl;
   FILE *fp;
   CURLcode res;
@@ -215,6 +216,10 @@ bool VoxbloxGroundTruthPlugin::downloadFile(const std::string& uri, const std::s
     /* always cleanup */
     curl_easy_cleanup(curl);
     fclose(fp);
+    if (res != CURLcode::CURLE_OK) {
+      LOG(ERROR) << "Failed to download the file. Error: " << std::string(curl_easy_strerror(res));
+      return false;
+    }
     return true;
   } else {
     return false;

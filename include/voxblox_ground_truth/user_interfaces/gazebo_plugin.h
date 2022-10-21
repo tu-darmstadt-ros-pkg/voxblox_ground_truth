@@ -14,6 +14,7 @@
 #include "voxblox_ground_truth/sdf_visualizer.h"
 
 namespace gazebo {
+
 class VoxbloxGroundTruthPlugin : public WorldPlugin {
  public:
   VoxbloxGroundTruthPlugin();
@@ -25,7 +26,7 @@ class VoxbloxGroundTruthPlugin : public WorldPlugin {
 
  private:
   const common::Mesh* loadMesh(const msgs::Geometry& geometry_msg) const;
-  bool downloadFile(const std::string& uri, const std::string& file_path) const;
+  bool downloadFile(const std::string& url, const std::string& file_path) const;
 
   physics::WorldPtr world_;
   ros::NodeHandle nh_private_;
