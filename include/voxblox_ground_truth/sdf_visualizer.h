@@ -18,6 +18,7 @@ class SdfVisualizer {
 
  private:
   ros::Publisher tsdf_map_pub_;
+  ros::Publisher mesh_pub_;
   ros::Publisher tsdf_map_surface_pub_;
   ros::Publisher tsdf_slice_pub_;
   ros::Publisher intersection_count_pub_;
