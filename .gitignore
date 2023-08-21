@@ -33,5 +33,6 @@
 
 # IDE
 **/.idea
+cmake-build-*
 
 **/models
