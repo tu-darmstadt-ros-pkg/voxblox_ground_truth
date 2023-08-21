@@ -174,20 +174,20 @@ bool VoxbloxGroundTruthPlugin::serviceCallback(
 
   // Optionally floodfill unoccupied space.
   bool floodfill_unoccupied = false;
-  nh_private_.param("floodfill_unoccupied", floodfill_unoccupied,
+  nh_private_.param("/voxblox_ground_truth/floodfill_unoccupied", floodfill_unoccupied,
                     floodfill_unoccupied);
   if (floodfill_unoccupied) {
     LOG(INFO) << "Floodfill unoccupied space.";
 
     double distance = 4 * voxel_size_;
-    nh_private_.param("floodfill_distance", distance, distance);
+    nh_private_.param("/voxblox_ground_truth/floodfill_distance", distance, distance);
     LOG(INFO) << "Floodfill distance: " << distance;
     sdf_creator.floodfillUnoccupied(distance);
   }
 
   // Visualize the TSDF and intersection count layers
   bool publish_debug_visuals = true;
-  nh_private_.param("publish_visuals", publish_debug_visuals,
+  nh_private_.param("/voxblox_ground_truth/publish_visuals", publish_debug_visuals,
                     publish_debug_visuals);
   if (publish_debug_visuals) {
     sdf_visualizer_.publishTsdfVisuals(sdf_creator.getTsdfMap().getTsdfLayer());
