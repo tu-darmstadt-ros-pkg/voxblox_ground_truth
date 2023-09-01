@@ -32,6 +32,10 @@ void SdfCreator::integrateTriangle(
   // Get the triangle's Axis Aligned Bounding Box
   const AABB aabb_tight = triangle_geometer.getAABB();
 
+  Eigen::Vector3f vec_ab = vertex_coordinates.vertex_b - vertex_coordinates.vertex_a;
+  Eigen::Vector3f vec_ac = vertex_coordinates.vertex_c - vertex_coordinates.vertex_a;
+  Eigen::Vector3f face_normal = vec_ab.cross(vec_ac).normalized();
+
   // Express the AABB corners in voxel index units
   GlobalIndex aabb_min_index = (aabb_tight.min.array() * voxel_size_inv_)
                                    .floor()
@@ -71,12 +75,14 @@ void SdfCreator::integrateTriangle(
 //        voxel_origin =
 //            voxblox::getOriginPointFromGridIndex(voxel_index, voxel_size_);
 
-        float distance = triangle_geometer.getDistanceToPoint(voxel_center);
+        // Determine sign based on plane normal
+        Eigen::Vector3f view_ray = voxel_center - vertex_coordinates.vertex_a;
+        float visibility = face_normal.dot(view_ray);
+        float sign = visibility < 0 ? -1.0f : 1.0f;
+        float distance = sign * triangle_geometer.getDistanceToPoint(voxel_center);
 
 
         // Update voxel if new distance is lower or if it is new
-        // TODO(victorr): Take the absolute distance, to account for signs that
-        //                might already have been computed
         if (std::abs(distance) < std::abs(voxel.distance) ||
             voxel.weight == 0.0f) {
           voxel.distance = distance;
@@ -199,9 +205,9 @@ void SdfCreator::updateSigns() {
 
 const voxblox::TsdfMap& SdfCreator::getTsdfMap() {
   // Compute the signs, unless they're already up to date
-  if (!signs_up_to_date_) {
-    updateSigns();
-  }
+//  if (!signs_up_to_date_) {
+//    updateSigns();
+//  }
 
   return tsdf_map_;
 }
