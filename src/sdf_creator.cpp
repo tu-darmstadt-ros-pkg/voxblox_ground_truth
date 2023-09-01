@@ -47,6 +47,7 @@ void SdfCreator::integrateTriangle(
   // Iterate over all voxels within the triangle's padded AABB
   LongIndexElement x, y, z;
   Point voxel_origin;
+  Point voxel_center;
   for (z = voxel_index_min[2]; z < voxel_index_max[2]; z++) {
     for (y = voxel_index_min[1]; y < voxel_index_max[1]; y++) {
       for (x = voxel_index_min[0]; x < voxel_index_max[0]; x++) {
@@ -65,9 +66,13 @@ void SdfCreator::integrateTriangle(
             block_ptr->getVoxelByVoxelIndex(local_voxel_index);
 
         // Compute distance to triangle
-        voxel_origin =
+        voxel_center =
             voxblox::getCenterPointFromGridIndex(voxel_index, voxel_size_);
-        float distance = triangle_geometer.getDistanceToPoint(voxel_origin);
+//        voxel_origin =
+//            voxblox::getOriginPointFromGridIndex(voxel_index, voxel_size_);
+
+        float distance = triangle_geometer.getDistanceToPoint(voxel_center);
+
 
         // Update voxel if new distance is lower or if it is new
         // TODO(victorr): Take the absolute distance, to account for signs that
@@ -84,7 +89,7 @@ void SdfCreator::integrateTriangle(
       //       and goes through voxel origin collides with the triangle.
       //       If it does, we increase the intersection counter for the voxel
       //       containing the intersection.
-      const Point2D ray(voxel_origin.y(), voxel_origin.z());
+      const Point2D ray(voxel_center.y(), voxel_center.z());
       Point barycentric_coordinates;
       bool ray_intersects_triangle =
           triangle_geometer.getRayIntersection(ray, &barycentric_coordinates);
@@ -95,7 +100,7 @@ void SdfCreator::integrateTriangle(
             barycentric_coordinates[1] * vertex_coordinates.vertex_b[0] +
             barycentric_coordinates[2] * vertex_coordinates.vertex_c[0];
         auto intersection_x_index = static_cast<IndexElement>(
-            std::ceil(intersection_x_coordinate * voxel_size_inv_));
+            std::ceil((intersection_x_coordinate - voxel_size_*0.5)* voxel_size_inv_));
 
         // Get the indices of the corresponding voxel and its containing block
         BlockIndex block_index = voxblox::getBlockIndexFromGlobalVoxelIndex(
